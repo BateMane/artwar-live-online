@@ -253,6 +253,21 @@ button { border: none; outline: none; background: none; font-family: inherit; cu
 }
 
 /* --- UPLOAD ZONE & PREVIEW --- */
+/* CORRECTION : Style manquant qui causait le bug du clic partout */
+.upload-zone {
+    border: 2px dashed white;
+    padding: 2rem;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.1);
+    cursor: pointer;
+    transition: 0.2s;
+    margin-bottom: 1rem;
+}
+.upload-zone:hover {
+    background: rgba(255,255,255,0.2);
+    transform: scale(1.02);
+}
+
 #upload-preview {
     display: flex; justify-content: center; align-items: center; margin-top: 10px; width: 100%;
 }
