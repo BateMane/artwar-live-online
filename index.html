@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ART WAR: JUICY EDITION</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="particles-container"></div>
+    <div id="flash-overlay"></div>
+    
+    <div id="custom-tooltip" class="custom-tooltip hidden"></div>
+
+    <div id="confirm-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <h2 style="font-size:2rem; margin-bottom:10px;">⚠️ ATTENTION ⚠️</h2>
+            <p style="font-size:1.1rem; line-height:1.4;">
+                Tu ne peux poster qu'un seul dessin par challenge !<br>
+                C'est ta réponse définitive ?
+            </p>
+            <div class="modal-actions">
+                <button id="modal-cancel" class="glass-btn-small" style="background:#ddd; color:black;">NON, ATTENDS</button>
+                <button id="modal-confirm" class="bubble-btn green-glow" style="padding:10px 20px;">OUI, J'ENVOIE ! 🔥</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="audio-bank" style="display:none;">
+        <audio id="sfx-clic" src="source/clic.mp3"></audio>
+        <audio id="sfx-cheer" src="source/cheer.mp3"></audio>
+        <audio id="sfx-fart" src="source/fart.mp3"></audio>
+        <audio id="sfx-meh" src="source/meh.mp3"></audio>
+        <audio id="sfx-yeah" src="source/yeah.mp3"></audio>
+        <audio id="sfx-cool" src="source/cool.mp3"></audio>
+    </div>
+
+    <div id="gallery-marquee" class="marquee-wrapper">
+        <div class="marquee-content" id="marquee-track"></div>
+    </div>
+
+    <header>
+        <div class="logo">
+            <span class="chrome-text">ART WAR</span>
+            <span class="pill-badge">LIVE</span>
+        </div>
+        <div class="header-controls">
+            <div class="volume-box">
+                <span>🔊</span>
+                <input type="range" id="volume-slider" min="0" max="100" value="30">
+            </div>
+            <button id="music-toggle" class="glass-btn-small">PLAY 💿</button>
+            <button class="glass-btn-small back-btn">ACCUEIL 🏠</button>
+        </div>
+    </header>
+
+    <main id="app">
+        <section id="view-hub" class="active-view">
+            <div class="glass-card">
+                <h1 class="chrome-text">WHO ARE U?</h1>
+                <div class="role-selector">
+                    <button id="btn-role-player" class="bubble-btn big-pink">JE SUIS ARTISTE 🎨</button>
+                    <button id="btn-role-admin" class="bubble-btn big-blue">JE SUIS JUGE ⚖️</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-login-player" class="hidden">
+            <div class="glass-card">
+                <h2>LOGIN ARTISTE</h2>
+                <form id="login-form-player" style="display:flex; flex-direction:column; gap:1rem;">
+                    <input type="text" id="player-username" placeholder="Ton Pseudo..." required autocomplete="off">
+                    <input type="password" id="player-pwd" placeholder="Mot de passe (1234)" required>
+                    <button type="submit" class="bubble-btn green-glow">GO 🚀</button>
+                </form>
+            </div>
+        </section>
+
+        <section id="view-login-admin" class="hidden">
+            <div class="glass-card">
+                <h2>LOGIN ADMIN</h2>
+                <form id="login-form-admin" style="display:flex; flex-direction:column; gap:1rem;">
+                    <input type="password" id="admin-pwd" placeholder="Pass (admin)" required>
+                    <button type="submit" class="bubble-btn big-blue">ACCESS 🔓</button>
+                </form>
+            </div>
+        </section>
+
+        <section id="view-admin-menu" class="hidden">
+            <div class="glass-card">
+                <h2>ADMIN DASHBOARD</h2>
+                <div class="admin-menu-grid">
+                    <button id="btn-edit-challenge" class="bubble-btn">✏️ ÉDITER DÉFI</button>
+                    <button id="btn-launch-review" class="bubble-btn big-red">🚀 LANCER LA REVIEW</button>
+                    <button id="btn-manage-users" class="bubble-btn" style="border: 2px solid #54a0ff;">👥 GÉRER JOUEURS</button>
+                    <button class="glass-btn-small back-btn" style="margin-top:10px;">Déconnexion</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-edit-challenge" class="hidden">
+            <div class="glass-card">
+                <button class="back-nav-admin glass-btn-small" style="align-self: flex-start;">← RETOUR</button>
+                <h2>NOUVEAU THÈME</h2>
+                <input type="text" id="input-challenge-title" placeholder="Titre...">
+                <textarea id="input-challenge-desc" placeholder="Description..." rows="3"></textarea>
+                
+                <div style="text-align:left; width:100%;">
+                    <label style="font-weight:bold; color:white;">⏳ Date limite de rendu :</label>
+                    <input type="datetime-local" id="input-deadline" style="margin-top:5px;">
+                </div>
+
+                <button id="save-challenge" class="bubble-btn green-glow">VALIDER ✅</button>
+            </div>
+        </section>
+
+        <section id="view-manage-users" class="hidden">
+            <div class="glass-card" style="max-width: 700px;">
+                <button class="back-nav-admin glass-btn-small" style="align-self: flex-start;">← RETOUR</button>
+                <h2>GESTION JOUEURS</h2>
+                <div id="user-list-container" class="scrollable-list"></div>
+            </div>
+        </section>
+
+        <section id="view-user" class="hidden">
+            <div class="user-top-bar">
+                <div class="user-identity">
+                    <img id="user-avatar-display" src="" alt="Avatar" class="avatar-small">
+                    <div class="user-text-info">
+                        <h2 id="user-welcome" style="margin:0; line-height:1;">Hello!</h2>
+                        <span id="user-rank-badge" class="pill-rank">NOVICE</span>
+                        <div id="user-equipped-badges-display" class="badges-display-area"></div>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-weight:900; font-size:1.2rem;"><span id="user-elo">0</span> ELO</div>
+                    <button id="btn-goto-profile" class="glass-btn-small" style="margin-top:5px; font-size:0.7rem;">MON PROFIL 👤</button>
+                </div>
+            </div>
+
+            <div class="liquid-progress-container">
+                <div class="liquid-bar" id="user-elo-bar"></div>
+            </div>
+
+            <div class="glass-card">
+                <div id="deadline-info" class="deadline-display hidden"></div>
+
+                <div style="background:var(--primary-pink); color:white; padding:5px 10px; border-radius:10px; display:inline-block; margin-bottom:10px; font-weight:bold;">THIS WEEK</div>
+                <h2 id="display-challenge-title" class="chrome-text">...</h2>
+                <p id="display-challenge-desc">...</p>
+                
+                <div id="upload-container">
+                    <div class="upload-zone" id="drop-zone">
+                        <div style="font-size:2rem;">📂</div>
+                        <p>CLIQUE OU GLISSE TON DESSIN</p>
+                        <input type="file" id="file-input" accept="image/*" hidden>
+                    </div>
+                </div>
+
+                <div id="submitted-message" class="hidden" style="color:var(--acid-green); border:2px solid var(--acid-green); padding:1rem; border-radius:15px; font-weight:bold;">
+                    ✅ DESSIN ENVOYÉ ! ATTENDS LE JUGE.
+                </div>
+
+                <div id="locked-message" class="hidden" style="color:red; border:2px solid red; padding:1rem; border-radius:15px; font-weight:bold;">
+                    🚫 REVIEW EN COURS... TROP TARD ! 🚫
+                </div>
+
+                <div id="upload-preview"></div>
+                <button id="submit-art" class="bubble-btn big-pink" disabled>ENVOYER 📨</button>
+            </div>
+        </section>
+
+        <section id="view-profile" class="hidden">
+            <div class="glass-card">
+                <button id="back-from-profile" class="glass-btn-small" style="align-self: flex-start;">← RETOUR</button>
+                <h2>MON PROFIL</h2>
+                
+                <div class="profile-edit-zone">
+                    <div class="avatar-wrapper" id="avatar-click-zone">
+                        <img id="profile-preview-img" src="" alt="Avatar Preview" class="avatar-large">
+                        <div class="avatar-overlay">📷</div>
+                    </div>
+                    <input type="file" id="profile-file-input" accept="image/*" hidden>
+                </div>
+
+                <div style="width:100%; text-align:left; margin-bottom:1rem;">
+                    <h3>Mes Badges (Max 2)</h3>
+                    <div id="badge-selection-grid" class="badge-grid-select"></div>
+                </div>
+
+                <label style="font-weight:bold; margin-bottom:5px;">Changer de pseudo :</label>
+                <input type="text" id="profile-name-input" placeholder="Nouveau pseudo...">
+                
+                <button id="save-profile-btn" class="bubble-btn green-glow" style="margin-top:20px;">SAUVEGARDER 💾</button>
+            </div>
+        </section>
+
+        <section id="view-review" class="hidden">
+            <button class="back-nav-admin glass-btn-small" style="position:absolute; top:10px; left:10px; z-index:100;">QUITTER</button>
+            
+            <div class="glass-card" style="max-width:800px;">
+                <div class="artwork-stage">
+                    <img id="review-image" src="" alt="">
+                    <div id="review-artist" class="artist-pill">Artist</div>
+                    
+                    <div id="empty-queue" class="hidden" style="text-align:center;">
+                        <h2 class="chrome-text">C'EST FINI !</h2>
+                        <p>Plus de dessins en attente.</p>
+                        <button id="btn-finish-session" class="bubble-btn big-red" style="margin-top:20px;">
+                            🏆 CLÔTURER & VOIR CLASSEMENT
+                        </button>
+                        <p style="color:#ff6b6b; margin-top:10px; font-size:0.8rem;">(Applique -50 Elo aux absents)</p>
+                    </div>
+                </div>
+
+                <div id="controls-panel" class="hidden" style="margin-top:2rem;">
+                    <div class="vote-grid">
+                        <button class="vote-btn" data-sfx="fart" data-score="-20" data-anim="🤢">🤢<br>PROUT</button>
+                        <button class="vote-btn" data-sfx="meh" data-score="-5" data-anim="😐">😐<br>BOF</button>
+                        <button class="vote-btn" data-sfx="yeah" data-score="10" data-anim="👌">👌<br>OK</button>
+                        <button class="vote-btn" data-sfx="cool" data-score="25" data-anim="✨">✨<br>COOL</button>
+                        <button class="vote-btn" data-sfx="cheer" data-score="60" data-anim="🐐" style="background:gold; border-color:white;">🐐<br>GOAT</button>
+                    </div>
+                    <p style="color:white; font-size:0.7rem; margin-top:5px; opacity:0.7;">Raccourcis: 1, 2, 3, 4, 5</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-leaderboard" class="hidden">
+            <button class="back-nav-admin glass-btn-small" style="margin-bottom:20px;">← RETOUR DASHBOARD</button>
+            <div class="glass-card" style="max-width:700px;">
+                <h1 class="chrome-text">🏆 CLASSEMENT 🏆</h1>
+                <div id="leaderboard-list" style="width:100%;"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="youtube-player"></div>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
