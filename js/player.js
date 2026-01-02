@@ -4,12 +4,11 @@ import { AudioMgr } from "./audio.js";
 
 export const Player = {
     currentUser: null,
-    currentFile: null, // On stocke le fichier brut pour l'upload
+    currentFile: null,
 
     init: async () => {
         Player.setupUpload();
         Player.setupProfile();
-        // Check lock & Timer loop
         setInterval(() => {
             Player.checkLock();
             Player.updateDeadlineDisplay();
@@ -17,19 +16,16 @@ export const Player = {
     },
 
     login: async (name) => {
-        // Fetch all users
         const users = await DB.get('users');
         let user = users.find(u => u.name === name);
         
         if (!user) {
-            // Create New User
             user = { 
                 id: Date.now(), name, elo: 0, avatar: CONFIG.defaultAvatar,
                 unlockedBadges: [], equippedBadges: [], streak: 0 
             };
             await DB.set('users', user.id, user);
         } else {
-            // Migration check
             if(!user.unlockedBadges) user.unlockedBadges = [];
             if(!user.equippedBadges) user.equippedBadges = [];
             if(user.streak === undefined) user.streak = 0;
@@ -59,14 +55,12 @@ export const Player = {
         const rank = UI.getRankObj(user.elo);
         document.getElementById('user-rank-badge').innerText = rank.name;
 
-        // Calcul barre XP (approximatif pour affichage)
         const nextRankIdx = CONFIG.ranks.indexOf(rank) + 1;
         const nextRank = CONFIG.ranks[nextRankIdx] || null;
         let pct = 100;
         if (nextRank) pct = ((user.elo - rank.min) / (nextRank.min - rank.min)) * 100;
         document.getElementById('user-elo-bar').style.width = `${pct}%`;
 
-        // Challenge Info
         const ch = await DB.getObj("challenge");
         if(ch) {
             document.getElementById('display-challenge-title').innerText = ch.title;
@@ -114,14 +108,13 @@ export const Player = {
 
     unlockBadge: async (badgeId) => {
         if(!Player.currentUser) return;
-        // Re-fetch user to be sure
         const users = await DB.get('users');
         const user = users.find(u => u.id === Player.currentUser.id);
         
         if(user && !user.unlockedBadges.includes(badgeId)) {
             user.unlockedBadges.push(badgeId);
-            await DB.set('users', user.id, user); // Save online
-            Player.currentUser = user; // Update local
+            await DB.set('users', user.id, user);
+            Player.currentUser = user; 
             
             AudioMgr.playSound('sfx-cool');
             alert(`🏆 BADGE DÉBLOQUÉ : ${CONFIG.badges[badgeId].name} !`);
@@ -136,10 +129,16 @@ export const Player = {
         const modalCancel = document.getElementById('modal-cancel');
         const modalConfirm = document.getElementById('modal-confirm');
 
+        // FIX 1: Arrêter la propagation sur l'input lui-même pour éviter la boucle
+        fileIn.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
         dropZone.addEventListener('click', async () => { 
             const dlObj = await DB.getObj("deadline");
             if (dlObj && dlObj.timestamp && Date.now() > parseInt(dlObj.timestamp)) return alert("Trop tard, c'est fini !");
-            fileIn.value = ''; fileIn.click(); 
+            fileIn.value = ''; 
+            fileIn.click(); 
         });
 
         fileIn.addEventListener('change', (e) => {
@@ -147,7 +146,6 @@ export const Player = {
                 Player.currentFile = e.target.files[0];
                 const r = new FileReader();
                 r.onload = (evt) => {
-                    // Preview local uniquement
                     document.getElementById('upload-preview').innerHTML = `<img src="${evt.target.result}">`;
                     document.getElementById('submit-art').disabled = false;
                 };
@@ -155,7 +153,9 @@ export const Player = {
             }
         });
 
-        document.getElementById('submit-art').addEventListener('click', () => {
+        // FIX 2: Arrêter la propagation sur le bouton Envoyer pour ne pas ré-ouvrir l'upload
+        document.getElementById('submit-art').addEventListener('click', (e) => {
+            e.stopPropagation(); // C'est la clé !
             if(!Player.currentUser || !Player.currentFile) return;
             modal.classList.remove('hidden'); 
             AudioMgr.playSound('sfx-clic');
@@ -167,13 +167,11 @@ export const Player = {
         });
 
         modalConfirm.addEventListener('click', async () => {
-            // UI Loading state
             const btn = document.getElementById('submit-art');
             btn.innerText = "ENVOI EN COURS...";
             btn.disabled = true;
 
             try {
-                // 1. Check Badges
                 const subs = await DB.get('subs');
                 if(subs.length === 0) await Player.unlockBadge('first');
 
@@ -183,16 +181,14 @@ export const Player = {
                 const currentCh = await DB.getObj("challenge");
                 const chId = currentCh ? currentCh.id : 'legacy';
 
-                // 2. Upload Image to Storage
                 const fileName = `submissions/${chId}_${Player.currentUser.id}_${Date.now()}.png`;
                 const imageUrl = await DB.uploadImage(Player.currentFile, fileName);
 
-                // 3. Save Submission to Firestore
                 const newSub = { 
                     id: Date.now(), 
                     userId: Player.currentUser.id, 
                     userName: Player.currentUser.name, 
-                    imageSrc: imageUrl, // URL Firebase
+                    imageSrc: imageUrl,
                     status: 'pending', 
                     score: 0,
                     challengeId: chId
@@ -213,6 +209,7 @@ export const Player = {
                 alert("Erreur upload: " + err.message);
             } finally {
                 btn.innerText = "ENVOYER 📨";
+                btn.disabled = false;
             }
         });
     },
@@ -247,7 +244,7 @@ export const Player = {
 
         profileIn.addEventListener('change', (e) => {
             if (e.target.files[0]) {
-                Player.currentFile = e.target.files[0]; // Store for upload
+                Player.currentFile = e.target.files[0];
                 const reader = new FileReader();
                 reader.onload = (evt) => {
                     document.getElementById('profile-preview-img').src = evt.target.result;
@@ -256,7 +253,8 @@ export const Player = {
             }
         });
 
-        document.getElementById('btn-goto-profile').addEventListener('click', async () => {
+        document.getElementById('btn-goto-profile').addEventListener('click', async (e) => {
+            e.stopPropagation(); 
             document.getElementById('profile-name-input').value = Player.currentUser.name;
             document.getElementById('profile-preview-img').src = Player.currentUser.avatar;
             await Player.renderProfileBadges();
@@ -269,7 +267,6 @@ export const Player = {
         });
 
         const saveProfileBtn = document.getElementById('save-profile-btn');
-        // Clone to remove old listeners
         const newSaveBtn = saveProfileBtn.cloneNode(true);
         saveProfileBtn.parentNode.replaceChild(newSaveBtn, saveProfileBtn);
 
@@ -283,13 +280,12 @@ export const Player = {
 
                 Player.currentUser.name = newName;
                 
-                // Upload Avatar if changed
                 if (Player.currentFile) {
                     const fileName = `avatars/${Player.currentUser.id}_${Date.now()}.png`;
                     const url = await DB.uploadImage(Player.currentFile, fileName);
                     Player.currentUser.avatar = url;
                     await Player.unlockBadge('star');
-                    Player.currentFile = null; // Reset
+                    Player.currentFile = null;
                 }
 
                 await DB.set('users', Player.currentUser.id, Player.currentUser);
@@ -312,7 +308,6 @@ export const Player = {
         const grid = document.getElementById('badge-selection-grid');
         grid.innerHTML = '';
         
-        // Ensure user data is fresh
         const users = await DB.get('users');
         const user = users.find(u => u.id === Player.currentUser.id);
         Player.currentUser = user;
