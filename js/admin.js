@@ -47,6 +47,20 @@ export const Admin = {
             UI.showView('view-review');
             Admin.nextReview();
         });
+
+        // --- FEATURE 3: SEASON RESET ---
+        document.getElementById('btn-reset-season').addEventListener('click', () => {
+            if(confirm("⚠️ ATTENTION : RESET DE SAISON ?\n\nCela va remettre l'ELO de TOUS les joueurs à 0.\nLes badges seront conservés.\n\nContinuer ?")) {
+                if(confirm("⛔ DERNIÈRE CHANCE !\n\nC'est irréversible. Tu es vraiment sûr ?")) {
+                    const users = DB.get(CONFIG.keys.users);
+                    // On remet l'ELO à 0 mais on garde le reste (badges, streak, etc.)
+                    users.forEach(u => u.elo = 0);
+                    DB.set(CONFIG.keys.users, users);
+                    AudioMgr.playSound('sfx-fart'); 
+                    alert("💀 SAISON RÉINITIALISÉE ! Tout le monde est à 0 ELO.");
+                }
+            }
+        });
     },
 
     setupReview: () => {
@@ -116,7 +130,7 @@ export const Admin = {
             const newElo = Math.max(0, users[uIdx].elo + pts);
             users[uIdx].elo = newElo;
 
-            // --- CHECK BADGES (Prout, Goat, Cool, Meh, Elite, MASTER) ---
+            // --- CHECK BADGES ---
             const badges = users[uIdx].unlockedBadges;
             
             if(pts === -20 && !badges.includes('prout')) badges.push('prout');
@@ -127,7 +141,7 @@ export const Admin = {
             // ELITE (500)
             if(newElo >= 500 && !badges.includes('elite')) badges.push('elite');
             
-            // MASTER (2000) - NOUVEAU
+            // MASTER (2000)
             if(newElo >= 2000 && !badges.includes('master')) badges.push('master');
         }
         DB.set(CONFIG.keys.users, users);
@@ -142,23 +156,18 @@ export const Admin = {
         let changed = false;
         
         users.forEach(u => {
-            // Est-ce que le joueur a participé à CETTE session ?
             if (Admin.participatingUserIds.has(u.id)) {
-                // OUI : Augmenter le streak
                 u.streak = (u.streak || 0) + 1;
-                
                 // CHECK NO LIFE (15 de suite)
                 if(u.streak >= 15 && !u.unlockedBadges.includes('nolife')) {
                     u.unlockedBadges.push('nolife');
                 }
                 changed = true;
-
             } else {
-                // NON : Punition + Reset Streak
                 if(u.elo > 0) {
                     u.elo = Math.max(0, u.elo - CONFIG.decay);
                 }
-                u.streak = 0; // Remise à zéro !
+                u.streak = 0; 
                 changed = true;
             }
         });
@@ -169,7 +178,16 @@ export const Admin = {
             alert(`Session close ! Punitions appliquées & Streaks mis à jour.`);
         }
 
-        users.sort((a,b) => b.elo - a.elo);
+        // --- FEATURE 2: TIE-BREAKING ---
+        // Tri par ELO décroissant, puis par Nombre de Badges décroissant
+        users.sort((a,b) => {
+            if (b.elo !== a.elo) return b.elo - a.elo;
+            // Si égalité ELO, le joueur avec le plus de badges passe devant
+            const badgesA = a.unlockedBadges ? a.unlockedBadges.length : 0;
+            const badgesB = b.unlockedBadges ? b.unlockedBadges.length : 0;
+            return badgesB - badgesA;
+        });
+
         const list = document.getElementById('leaderboard-list');
         list.innerHTML = '';
         users.forEach((u, i) => {
@@ -237,16 +255,23 @@ export const Admin = {
             const avatarSrc = u.avatar || CONFIG.defaultAvatar;
             const hasHonor = u.unlockedBadges && u.unlockedBadges.includes('honor');
             
-            // Affichage du Streak dans la liste admin (Optionnel mais pratique)
             const streakInfo = u.streak > 1 ? `🔥 ${u.streak}` : '';
+            
+            // --- FEATURE 1: BADGE PREVIEW ---
+            // On affiche les icônes de tous les badges débloqués
+            const smallBadges = (u.unlockedBadges || []).map(bId => {
+                const b = CONFIG.badges[bId];
+                return b ? b.icon : '';
+            }).join(' ');
 
             return `
             <div class="user-item">
                 <img src="${avatarSrc}" class="avatar-small" alt="avatar">
                 <div class="user-item-info">
-                    <span>${u.name} ${streakInfo}</span>
+                    <span>${u.name}</span>
                     <span class="user-item-rank">${rankObj.name}</span>
-                    <small>${u.elo} ELO</small>
+                    <small>${u.elo} ELO <span style="font-size:0.8rem; margin-left:5px;">${streakInfo}</span></small>
+                    <div style="font-size:0.8rem; margin-top:2px;">${smallBadges}</div>
                 </div>
                 ${!hasHonor ? `<button class="btn-honor" onclick="giveHonor(${u.id})">🏅</button>` : '<span>🏅</span>'}
                 <button class="btn-delete" onclick="deleteUser(${u.id})">🗑️</button>
