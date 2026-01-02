@@ -17,20 +17,21 @@ export const Admin = {
     setupDashboard: () => {
         document.getElementById('btn-edit-challenge').addEventListener('click', () => UI.showView('view-edit-challenge'));
         
-        document.getElementById('save-challenge').addEventListener('click', () => {
-            DB.set(CONFIG.keys.challenge, { 
+        document.getElementById('save-challenge').addEventListener('click', async () => {
+            const newCh = { 
                 id: Date.now(), 
                 title: document.getElementById('input-challenge-title').value, 
                 desc: document.getElementById('input-challenge-desc').value 
-            });
-            localStorage.setItem(CONFIG.keys.reviewState, 'false');
+            };
+            await DB.setObj("challenge", newCh);
+            await DB.setObj("reviewState", { isReviewing: false });
             
             const deadlineInput = document.getElementById('input-deadline').value;
             if(deadlineInput) {
                 const timestamp = new Date(deadlineInput).getTime();
-                localStorage.setItem(CONFIG.keys.deadline, timestamp);
+                await DB.setObj("deadline", { timestamp: timestamp });
             } else {
-                localStorage.removeItem(CONFIG.keys.deadline);
+                await DB.setObj("deadline", { timestamp: null });
             }
 
             AudioMgr.playSound('sfx-yeah');
@@ -38,26 +39,30 @@ export const Admin = {
             UI.showView('view-admin-menu');
         });
 
-        document.getElementById('btn-launch-review').addEventListener('click', () => {
-            localStorage.setItem(CONFIG.keys.reviewState, 'true');
-            Admin.reviewQueue = DB.get(CONFIG.keys.subs).filter(s => s.status === 'pending');
+        document.getElementById('btn-launch-review').addEventListener('click', async () => {
+            await DB.setObj("reviewState", { isReviewing: true });
+            
+            const subs = await DB.get('subs');
+            // Filtrer pending
+            Admin.reviewQueue = subs.filter(s => s.status === 'pending');
             Admin.participatingUserIds = new Set(Admin.reviewQueue.map(s => s.userId)); 
             Admin.currentReviewIndex = 0;
+            
             document.body.classList.add('review-mode'); 
             UI.showView('view-review');
             Admin.nextReview();
         });
 
-        // --- FEATURE 3: SEASON RESET ---
-        document.getElementById('btn-reset-season').addEventListener('click', () => {
-            if(confirm("⚠️ ATTENTION : RESET DE SAISON ?\n\nCela va remettre l'ELO de TOUS les joueurs à 0.\nLes badges seront conservés.\n\nContinuer ?")) {
-                if(confirm("⛔ DERNIÈRE CHANCE !\n\nC'est irréversible. Tu es vraiment sûr ?")) {
-                    const users = DB.get(CONFIG.keys.users);
-                    // On remet l'ELO à 0 mais on garde le reste (badges, streak, etc.)
-                    users.forEach(u => u.elo = 0);
-                    DB.set(CONFIG.keys.users, users);
+        document.getElementById('btn-reset-season').addEventListener('click', async () => {
+            if(confirm("⚠️ ATTENTION : RESET DE SAISON ?")) {
+                if(confirm("⛔ C'est irréversible (Reset ELO). Sûr ?")) {
+                    const users = await DB.get('users');
+                    for (const u of users) {
+                        u.elo = 0;
+                        await DB.set('users', u.id, u);
+                    }
                     AudioMgr.playSound('sfx-fart'); 
-                    alert("💀 SAISON RÉINITIALISÉE ! Tout le monde est à 0 ELO.");
+                    alert("💀 SAISON RÉINITIALISÉE !");
                 }
             }
         });
@@ -116,73 +121,68 @@ export const Admin = {
         }
     },
 
-    resolveVote: (pts) => {
+    resolveVote: async (pts) => {
         const sub = Admin.reviewQueue[Admin.currentReviewIndex];
-        const allSubs = DB.get(CONFIG.keys.subs);
-        const users = DB.get(CONFIG.keys.users);
         
-        const subIdx = allSubs.findIndex(s => s.id === sub.id);
-        if(subIdx > -1) { allSubs[subIdx].status = 'reviewed'; allSubs[subIdx].score = pts; }
-        DB.set(CONFIG.keys.subs, allSubs);
+        // Update Sub
+        sub.status = 'reviewed';
+        sub.score = pts;
+        await DB.set('subs', sub.id, sub);
         
+        // Update User
+        const users = await DB.get('users');
         const uIdx = users.findIndex(u => u.id === sub.userId);
+        
         if(uIdx > -1) { 
-            const newElo = Math.max(0, users[uIdx].elo + pts);
-            users[uIdx].elo = newElo;
+            const user = users[uIdx];
+            const newElo = Math.max(0, user.elo + pts);
+            user.elo = newElo;
 
-            // --- CHECK BADGES ---
-            const badges = users[uIdx].unlockedBadges;
+            // Badges logic
+            if(!user.unlockedBadges) user.unlockedBadges = [];
             
-            if(pts === -20 && !badges.includes('prout')) badges.push('prout');
-            if(pts === 60 && !badges.includes('goat')) badges.push('goat');
-            if(pts === 25 && !badges.includes('cool')) badges.push('cool');
-            if(pts === -5 && !badges.includes('meh')) badges.push('meh');
+            if(pts === -20 && !user.unlockedBadges.includes('prout')) user.unlockedBadges.push('prout');
+            if(pts === 60 && !user.unlockedBadges.includes('goat')) user.unlockedBadges.push('goat');
+            if(pts === 25 && !user.unlockedBadges.includes('cool')) user.unlockedBadges.push('cool');
+            if(pts === -5 && !user.unlockedBadges.includes('meh')) user.unlockedBadges.push('meh');
+            if(newElo >= 500 && !user.unlockedBadges.includes('elite')) user.unlockedBadges.push('elite');
+            if(newElo >= 2000 && !user.unlockedBadges.includes('master')) user.unlockedBadges.push('master');
 
-            // ELITE (500)
-            if(newElo >= 500 && !badges.includes('elite')) badges.push('elite');
-            
-            // MASTER (2000)
-            if(newElo >= 2000 && !badges.includes('master')) badges.push('master');
+            await DB.set('users', user.id, user);
         }
-        DB.set(CONFIG.keys.users, users);
         
         Admin.currentReviewIndex++;
         setTimeout(Admin.nextReview, 800); 
     },
 
-    finishSession: () => {
+    finishSession: async () => {
         document.body.classList.remove('review-mode');
-        const users = DB.get(CONFIG.keys.users);
+        const users = await DB.get('users');
         let changed = false;
         
-        users.forEach(u => {
+        for (const u of users) {
             if (Admin.participatingUserIds.has(u.id)) {
                 u.streak = (u.streak || 0) + 1;
-                // CHECK NO LIFE (15 de suite)
                 if(u.streak >= 15 && !u.unlockedBadges.includes('nolife')) {
                     u.unlockedBadges.push('nolife');
                 }
-                changed = true;
+                await DB.set('users', u.id, u);
             } else {
                 if(u.elo > 0) {
                     u.elo = Math.max(0, u.elo - CONFIG.decay);
                 }
                 u.streak = 0; 
-                changed = true;
+                await DB.set('users', u.id, u);
             }
-        });
-
-        if(changed) {
-            DB.set(CONFIG.keys.users, users);
-            AudioMgr.playSound('sfx-meh');
-            alert(`Session close ! Punitions appliquées & Streaks mis à jour.`);
         }
 
-        // --- FEATURE 2: TIE-BREAKING ---
-        // Tri par ELO décroissant, puis par Nombre de Badges décroissant
-        users.sort((a,b) => {
+        AudioMgr.playSound('sfx-meh');
+        alert(`Session close !`);
+
+        // Refresh List for Leaderboard
+        const updatedUsers = await DB.get('users');
+        updatedUsers.sort((a,b) => {
             if (b.elo !== a.elo) return b.elo - a.elo;
-            // Si égalité ELO, le joueur avec le plus de badges passe devant
             const badgesA = a.unlockedBadges ? a.unlockedBadges.length : 0;
             const badgesB = b.unlockedBadges ? b.unlockedBadges.length : 0;
             return badgesB - badgesA;
@@ -190,7 +190,7 @@ export const Admin = {
 
         const list = document.getElementById('leaderboard-list');
         list.innerHTML = '';
-        users.forEach((u, i) => {
+        updatedUsers.forEach((u, i) => {
             const div = document.createElement('div');
             div.className = `leaderboard-row rank-${i+1}`;
             const badgesHtml = UI.getBadgeHTML(u.equippedBadges || []);
@@ -210,39 +210,35 @@ export const Admin = {
     },
 
     setupUserMgmt: () => {
-        document.getElementById('btn-manage-users').addEventListener('click', () => {
-            Admin.renderUserList();
+        document.getElementById('btn-manage-users').addEventListener('click', async () => {
+            await Admin.renderUserList();
             UI.showView('view-manage-users');
         });
         
-        window.deleteUser = (id) => {
+        window.deleteUser = async (id) => {
             if(confirm("Supprimer ce joueur ?")) {
-                let users = DB.get(CONFIG.keys.users);
-                users = users.filter(u => u.id !== id);
-                DB.set(CONFIG.keys.users, users);
+                await DB.delete('users', id);
                 AudioMgr.playSound('sfx-meh'); 
-                Admin.renderUserList();
+                await Admin.renderUserList();
             }
         };
 
-        window.giveHonor = (id) => {
-            let users = DB.get(CONFIG.keys.users);
+        window.giveHonor = async (id) => {
+            const users = await DB.get('users');
             const u = users.find(u => u.id === id);
             if(u && !u.unlockedBadges.includes('honor')) {
                 if(!u.unlockedBadges) u.unlockedBadges = [];
                 u.unlockedBadges.push('honor');
-                DB.set(CONFIG.keys.users, users);
+                await DB.set('users', u.id, u);
                 AudioMgr.playSound('sfx-yeah');
                 alert(`Badge Honneur donné à ${u.name} !`);
-                Admin.renderUserList();
-            } else {
-                alert("Il l'a déjà ou user introuvable.");
+                await Admin.renderUserList();
             }
         };
     },
 
-    renderUserList: () => {
-        const users = DB.get(CONFIG.keys.users);
+    renderUserList: async () => {
+        const users = await DB.get('users');
         const container = document.getElementById('user-list-container');
         
         if (users.length === 0) {
@@ -254,11 +250,7 @@ export const Admin = {
             const rankObj = UI.getRankObj(u.elo); 
             const avatarSrc = u.avatar || CONFIG.defaultAvatar;
             const hasHonor = u.unlockedBadges && u.unlockedBadges.includes('honor');
-            
             const streakInfo = u.streak > 1 ? `🔥 ${u.streak}` : '';
-            
-            // --- FEATURE 1: BADGE PREVIEW ---
-            // On affiche les icônes de tous les badges débloqués
             const smallBadges = (u.unlockedBadges || []).map(bId => {
                 const b = CONFIG.badges[bId];
                 return b ? b.icon : '';

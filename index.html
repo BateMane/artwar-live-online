@@ -13,7 +13,6 @@
 
     <div id="particles-container"></div>
     <div id="flash-overlay"></div>
-    
     <div id="custom-tooltip" class="custom-tooltip hidden"></div>
 
     <div id="confirm-modal" class="modal-overlay hidden">
@@ -97,9 +96,7 @@
                     <button id="btn-edit-challenge" class="bubble-btn">✏️ ÉDITER DÉFI</button>
                     <button id="btn-launch-review" class="bubble-btn big-red">🚀 LANCER LA REVIEW</button>
                     <button id="btn-manage-users" class="bubble-btn" style="border: 2px solid #54a0ff;">👥 GÉRER JOUEURS</button>
-                    
                     <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.5); width: 100%;">
-                    
                     <button id="btn-reset-season" class="bubble-btn" style="background: #2d3436; color: #ff7675; font-size: 0.9rem;">💀 RESET SAISON</button>
                     <button class="glass-btn-small back-btn" style="margin-top:10px;">Déconnexion</button>
                 </div>
@@ -112,12 +109,10 @@
                 <h2>NOUVEAU THÈME</h2>
                 <input type="text" id="input-challenge-title" placeholder="Titre...">
                 <textarea id="input-challenge-desc" placeholder="Description..." rows="3"></textarea>
-                
                 <div style="text-align:left; width:100%;">
                     <label style="font-weight:bold; color:white;">⏳ Date limite de rendu :</label>
                     <input type="datetime-local" id="input-deadline" style="margin-top:5px;">
                 </div>
-
                 <button id="save-challenge" class="bubble-btn green-glow">VALIDER ✅</button>
             </div>
         </section>
@@ -152,7 +147,6 @@
 
             <div class="glass-card">
                 <div id="deadline-info" class="deadline-display hidden"></div>
-
                 <div style="background:var(--primary-pink); color:white; padding:5px 10px; border-radius:10px; display:inline-block; margin-bottom:10px; font-weight:bold;">THIS WEEK</div>
                 <h2 id="display-challenge-title" class="chrome-text">...</h2>
                 <p id="display-challenge-desc">...</p>
@@ -168,7 +162,6 @@
                 <div id="submitted-message" class="hidden" style="color:var(--acid-green); border:2px solid var(--acid-green); padding:1rem; border-radius:15px; font-weight:bold;">
                     ✅ DESSIN ENVOYÉ ! ATTENDS LE JUGE.
                 </div>
-
                 <div id="locked-message" class="hidden" style="color:red; border:2px solid red; padding:1rem; border-radius:15px; font-weight:bold;">
                     🚫 REVIEW EN COURS... TROP TARD ! 🚫
                 </div>
@@ -182,7 +175,6 @@
             <div class="glass-card">
                 <button id="back-from-profile" class="glass-btn-small" style="align-self: flex-start;">← RETOUR</button>
                 <h2>MON PROFIL</h2>
-                
                 <div class="profile-edit-zone">
                     <div class="avatar-wrapper" id="avatar-click-zone">
                         <img id="profile-preview-img" src="" alt="Avatar Preview" class="avatar-large">
@@ -190,37 +182,29 @@
                     </div>
                     <input type="file" id="profile-file-input" accept="image/*" hidden>
                 </div>
-
                 <div style="width:100%; text-align:left; margin-bottom:1rem;">
                     <h3>Mes Badges (Max 2)</h3>
                     <div id="badge-selection-grid" class="badge-grid-select"></div>
                 </div>
-
                 <label style="font-weight:bold; margin-bottom:5px;">Changer de pseudo :</label>
                 <input type="text" id="profile-name-input" placeholder="Nouveau pseudo...">
-                
                 <button id="save-profile-btn" class="bubble-btn green-glow" style="margin-top:20px;">SAUVEGARDER 💾</button>
             </div>
         </section>
 
         <section id="view-review" class="hidden">
             <button class="back-nav-admin glass-btn-small" style="position:absolute; top:10px; left:10px; z-index:100;">QUITTER</button>
-            
             <div class="glass-card" style="max-width:800px;">
                 <div class="artwork-stage">
                     <img id="review-image" src="" alt="">
                     <div id="review-artist" class="artist-pill">Artist</div>
-                    
                     <div id="empty-queue" class="hidden" style="text-align:center;">
                         <h2 class="chrome-text">C'EST FINI !</h2>
                         <p>Plus de dessins en attente.</p>
-                        <button id="btn-finish-session" class="bubble-btn big-red" style="margin-top:20px;">
-                            🏆 CLÔTURER & VOIR CLASSEMENT
-                        </button>
+                        <button id="btn-finish-session" class="bubble-btn big-red" style="margin-top:20px;">🏆 CLÔTURER & VOIR CLASSEMENT</button>
                         <p style="color:#ff6b6b; margin-top:10px; font-size:0.8rem;">(Applique -50 Elo aux absents)</p>
                     </div>
                 </div>
-
                 <div id="controls-panel" class="hidden" style="margin-top:2rem;">
                     <div class="vote-grid">
                         <button class="vote-btn" data-sfx="fart" data-score="-20" data-anim="🤢">🤢<br>PROUT</button>
@@ -244,6 +228,7 @@
     </main>
 
     <div id="youtube-player"></div>
+
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

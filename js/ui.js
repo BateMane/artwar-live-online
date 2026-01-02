@@ -37,11 +37,14 @@ export const UI = {
         }
     },
 
-    loadMarquee: () => {
-        const subs = DB.get(CONFIG.keys.subs).filter(s => s.status === 'reviewed');
+    loadMarquee: async () => {
+        // Now Async
+        const subs = await DB.get('subs');
+        const reviewed = subs.filter(s => s.status === 'reviewed');
         const track = document.getElementById('marquee-track');
-        if(subs.length > 0) {
-            const imgs = [...subs, ...subs, ...subs].map(s => `<img src="${s.imageSrc}">`).join('');
+        if(reviewed.length > 0) {
+            // Triple loop for marquee effect
+            const imgs = [...reviewed, ...reviewed, ...reviewed].map(s => `<img src="${s.imageSrc}">`).join('');
             track.innerHTML = imgs;
         } else {
             track.innerHTML = `
@@ -60,14 +63,12 @@ export const UI = {
         return rank;
     },
 
-    // --- CORRECTION BUG INFOBULLE ---
     getBadgeHTML: (badgeIds) => {
         if(!badgeIds || badgeIds.length === 0) return '';
         return badgeIds.map(id => {
             const b = CONFIG.badges[id];
             if(!b) return '';
             
-            // IMPORTANT : On échappe les apostrophes (') pour ne pas casser le HTML
             const safeName = b.name.replace(/'/g, "\\'");
             const safeDesc = b.desc.replace(/'/g, "\\'");
 
@@ -80,7 +81,6 @@ export const UI = {
     },
 };
 
-// Fonctions globales pour l'infobulle
 window.showTooltip = (e, title, desc) => {
     const tooltip = document.getElementById('custom-tooltip');
     if(tooltip) {
@@ -102,7 +102,6 @@ window.hideTooltip = () => {
 const moveTooltip = (e) => {
     const tooltip = document.getElementById('custom-tooltip');
     if(tooltip) {
-        // Décalage pour ne pas être sous le curseur
         tooltip.style.left = (e.clientX + 15) + 'px';
         tooltip.style.top = (e.clientY + 15) + 'px';
     }

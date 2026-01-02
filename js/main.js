@@ -4,12 +4,14 @@ import { AudioMgr } from "./audio.js";
 import { Player } from "./player.js";
 import { Admin } from "./admin.js";
 
-// Init App
-DB.init();
-AudioMgr.init();
-UI.loadMarquee();
-Player.init();
-Admin.init();
+// Init App (Async Wrapper)
+(async () => {
+    await DB.init(); // On attend que Firebase soit prêt
+    AudioMgr.init();
+    UI.loadMarquee();
+    await Player.init();
+    Admin.init();
+})();
 
 // Global Event Listeners (Navigation & Login)
 document.querySelectorAll('.back-btn').forEach(b => b.addEventListener('click', () => {
@@ -50,9 +52,6 @@ document.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
         UI.animateButton(btn);
         if (!btn.dataset.sfx) AudioMgr.playSound('sfx-clic');
-    });
-    btn.addEventListener('mouseenter', () => {
-        // No hover sound as requested
     });
 });
 
